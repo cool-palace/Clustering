@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
-
+#include <QtConcurrent>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -15,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->view->setAlignment(Qt::AlignCenter);
     connect(ui->load, &QAction::triggered, this, &MainWindow::load_data);
     connect(ui->spinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::display_data);
+    connect(ui->clustering, &QPushButton::clicked, this, &MainWindow::start_clustering);
 }
 
 MainWindow::~MainWindow() {
@@ -47,6 +48,9 @@ void MainWindow::load_data() {
     ui->statusbar->showMessage("Данные успешно импортированы");
     ui->spinBox->setEnabled(!data.isEmpty());
     ui->spinBox->setValue(1);
+    ui->num_clusters->setEnabled(!data.isEmpty());
+    ui->clustering->setEnabled(!data.isEmpty());
+    ui->centroids->setEnabled(!data.isEmpty());
     prepare_scene();
 }
 
@@ -79,4 +83,133 @@ void MainWindow::prepare_scene() {
 
 void MainWindow::display_data(int column) {
     scene->display_data(data, column-1);
+}
+
+void MainWindow::start_clustering() {
+    if (data.empty()) return;
+    int k = ui->num_clusters->value();
+    bool plus_centroids = ui->centroids->currentIndex() == 1 ? true : false;
+    ui->statusbar->showMessage("Начата кластеризация, пожалуйста, подождите...");
+    ui->spinBox->setEnabled(false);
+    ui->clustering->setEnabled(false);
+    QFutureWatcher<QVector<int>>* watcher = new QFutureWatcher<QVector<int>>(this);
+    auto future = QtConcurrent::run([this, k, plus_centroids]() {
+        return k_means_clustering(data, k, plus_centroids);
+    });
+    connect(watcher, &QFutureWatcher<QVector<int>>::finished, this, [this, watcher]() {
+        QVector<int> result = watcher->result();
+        scene->display_data(data, result, ui->num_clusters->value());
+        ui->statusbar->showMessage("Кластеризация проведена.");
+        ui->spinBox->setEnabled(true);
+        ui->clustering->setEnabled(true);
+        watcher->deleteLater();
+    });
+    watcher->setFuture(future);
+}
+
+double MainWindow::euclidean_distance(const QVector<double> &point1, const QVector<double> &point2) {
+    double sum = 0;
+    for (int i = 2; i < point1.size(); ++i) {
+        sum += std::pow(point1[i] - point2[i], 2);
+    }
+    return std::sqrt(sum);
+}
+
+QVector<int> MainWindow::k_means_clustering(const QVector<QVector<double>> &data, int k, bool plus_centroids) {
+    int num_points = data.size();
+    int num_features = data[0].size();
+
+    QVector<QVector<double>> centroids;
+    if (plus_centroids) {
+        // Поиск центроидов по алгоритму k-means++
+        centroids = k_means_plusplus_centroids(data, k);
+    } else {
+        // Инициализация центроидов случайным образом
+        centroids = QVector<QVector<double>>(k, QVector<double>(num_features));
+        srand(time(0));
+        for (int i = 0; i < k; ++i) {
+            centroids[i] = data[rand() % num_points];
+        }
+    }
+    QVector<int> labels(num_points, -1);
+    bool converged = false;
+
+    while (!converged) {
+        converged = true;
+        // Присвоение точек к ближайшим центроидам
+        for (int i = 0; i < num_points; ++i) {
+            double min_distance = std::numeric_limits<double>::max();
+            int best_centroid = -1;
+            for (int j = 0; j < k; ++j) {
+                double distance = euclidean_distance(data[i], centroids[j]);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    best_centroid = j;
+                }
+            }
+            if (labels[i] != best_centroid) {
+                labels[i] = best_centroid;
+                converged = false;
+            }
+        }
+        // Обновление центроидов
+        QVector<QVector<double>> new_centroids(k, QVector<double>(num_features, 0));
+        QVector<int> points_per_cluster(k, 0);
+        for (int i = 0; i < num_points; ++i) {
+            int cluster = labels[i];
+            for (int j = 0; j < num_features; ++j) {
+                new_centroids[cluster][j] += data[i][j];
+            }
+            points_per_cluster[cluster]++;
+        }
+        for (int i = 0; i < k; ++i) {
+            if (points_per_cluster[i] > 0) {
+                for (int j = 0; j < num_features; ++j) {
+                    new_centroids[i][j] /= points_per_cluster[i];
+                }
+            } else {
+                new_centroids[i] = data[rand() % num_points]; // Случайная инициализация для пустого кластера
+            }
+        }
+        centroids = new_centroids;
+    }
+    return labels;
+}
+
+QVector<QVector<double>> MainWindow::k_means_plusplus_centroids(const QVector<QVector<double>>& data, int k) {
+    int num_points = data.size();
+    int num_features = data[0].size();
+    QVector<QVector<double>> centroids;
+    srand(time(0));
+    // Случайный выбор первого центра
+    centroids.push_back(data[rand() % num_points]);
+
+    // Выбор оставшихся центров
+    for (int i = 1; i < k; ++i) {
+        QVector<double> distances(num_points);
+        double total_distance = 0.0;
+        // Вычисление расстояний до ближайшего центра
+        for (int j = 0; j < num_points; ++j) {
+            double min_distance = std::numeric_limits<double>::max();
+            for (const auto& centroid : centroids) {
+                double distance = euclidean_distance(data[j], centroid);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                }
+            }
+            distances[j] = min_distance;
+            total_distance += min_distance * min_distance; // Общая сумма квадратов расстояний
+        }
+        // Выбор следующего центра с вероятностью пропорционально квадрату расстояния
+        double rand_val = static_cast<double>(rand()) / RAND_MAX; // Случайное число от 0 до 1
+        double cumulative_prob = 0.0;
+        for (int j = 0; j < num_points; ++j) {
+            cumulative_prob += (distances[j] * distances[j]) / total_distance;
+            if (cumulative_prob >= rand_val) {
+                centroids.push_back(data[j]);
+                break;
+            }
+        }
+    }
+    return centroids;
 }

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>420</width>
-    <height>394</height>
+    <width>611</width>
+    <height>621</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,10 +17,63 @@
    <layout class="QGridLayout" name="gridLayout_2">
     <item row="0" column="0">
      <layout class="QGridLayout" name="gridLayout">
+      <item row="2" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Центроиды:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="centroids">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <item>
+           <property name="text">
+            <string>Случайные</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>По алгоритму k-means++</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
+       <widget class="QSpinBox" name="num_clusters">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="prefix">
+         <string>Количество кластеров: </string>
+        </property>
+        <property name="minimum">
+         <number>2</number>
+        </property>
+        <property name="maximum">
+         <number>10</number>
+        </property>
+       </widget>
+      </item>
       <item row="0" column="0">
        <widget class="QSpinBox" name="spinBox">
         <property name="enabled">
          <bool>false</bool>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
         </property>
         <property name="prefix">
          <string>Столбец данных: </string>
@@ -36,7 +89,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
+      <item row="4" column="0">
        <widget class="QGraphicsView" name="view">
         <property name="minimumSize">
          <size>
@@ -46,8 +99,8 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>600</width>
-          <height>450</height>
+          <width>800</width>
+          <height>600</height>
          </size>
         </property>
         <property name="verticalScrollBarPolicy">
@@ -61,6 +114,16 @@
         </property>
        </widget>
       </item>
+      <item row="5" column="0">
+       <widget class="QPushButton" name="clustering">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Кластеризация</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
    </layout>
@@ -70,8 +133,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>420</width>
-     <height>21</height>
+     <width>611</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">

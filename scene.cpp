@@ -4,9 +4,9 @@
 #include <QGraphicsView>
 
 Scene::Scene(QObject* parent) : QGraphicsScene(parent)
-    , line_pen(QBrush(Qt::black),1)
+    , line_pen(QBrush(Qt::black),2)
 {
-
+    connect(this, &Scene::update_point_color, this, &Scene::set_point_color);
 }
 
 Scene::~Scene() {
@@ -17,21 +17,21 @@ Scene::~Scene() {
 
 void Scene::set_scale(double x_max, double y_max, double x_min, double y_min, double x_step, double y_step) {
     min = QPointF(x_min, y_min);
-    steps = QPointF(x_step, y_step) * 5;
+    steps = QPointF(x_step, y_step) * 3;
     setSceneRect(QRectF(0, 0, abs(x_max-x_min)/steps.x(), abs(y_max-y_min)/steps.y()));
     auto view = views().first();
     view->fitInView(sceneRect(), Qt::KeepAspectRatio);
     view->ensureVisible(itemsBoundingRect(), 0, 0);
 //    double x_scale = (x_max - x_min)/x_step;
 //    double y_scale = (y_max - y_min)/y_step;
-    qDebug() << width() << height() << min << scale;
+//    qDebug() << width() << height() << min << scale;
 //    qDebug() << x_scale << y_scale << x_step << y_step;
 }
 
 void Scene::add_point(double x, double y) {
 //    qDebug() << (x-min.x()) * scale + margin << height() - margin - (y-min.y()) * scale;
 //    QPointF point = QPointF((x-min.x()) * scale + margin, height() - margin - (y-min.y()) * scale);
-    QPointF point = QPointF((x-min.x())/steps.x() + margin, height() - margin - (y-min.y())/steps.y());
+    QPointF point = QPointF((x-min.x())/steps.x(), height() - (y-min.y())/steps.y());
     auto line = QLineF(point, point);
     points.append(new QGraphicsLineItem(line));
     points.back()->setPen(line_pen);
@@ -39,9 +39,7 @@ void Scene::add_point(double x, double y) {
 }
 
 void Scene::set_point_color(int index, int hue) {
-    QPen pen;
-    pen.setColor(QColor::fromHsv(hue, 255, 255));
-    points[index]->setPen(pen);
+    points[index]->setPen(QPen(QBrush(QColor::fromHsv(hue, 255, 255)),2));
 }
 
 void Scene::reset_point_colors() {
@@ -73,10 +71,21 @@ void Scene::display_data(const QVector<QVector<double>>& data, int column){
         reset_point_colors();
         return;
     }
-    for (int i = 0; i < data.size(); ++i) {
-//        QtConcurrent::run(this, &Scene::set_point_color, i, abs(data[i][column] - minimums[column]) * hue_step_sizes[column]);
-        set_point_color(i, abs(data[i][column] - minimums[column]) * hue_step_sizes[column]);
-    }
+    QtConcurrent::run([this, data, column]() {
+        for (int i = 0; i < data.size(); ++i) {
+            int hue = abs(data[i][column] - minimums[column]) * hue_step_sizes[column];
+            emit update_point_color(i, hue);
+        }
+    });
+}
+
+void Scene::display_data(const QVector<QVector<double>>& data, const QVector<int>& clusters, int k) {
+    QtConcurrent::run([this, data, clusters, k]() {
+        for (int i = 0; i < data.size(); ++i) {
+            int hue = (clusters[i] * 270) / (k - 1);
+            emit update_point_color(i, hue);
+        }
+    });
 }
 
 void Scene::reset() {

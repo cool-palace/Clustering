@@ -19,7 +19,9 @@ public:
     void set_ranges(const QVector<double>&, const QVector<double>&, double, double);
     void display_data(const QVector<QVector<double>>&);
     void display_data(const QVector<QVector<double>>&, int column);
-
+    void display_data(const QVector<QVector<double>>&, const QVector<int>&, int);
+signals:
+    void update_point_color(int, int);
 private:
     void reset();
     void clear_points();
