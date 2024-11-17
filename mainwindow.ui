@@ -142,13 +142,22 @@
      <string>Файл</string>
     </property>
     <addaction name="load"/>
+    <addaction name="save"/>
    </widget>
    <addaction name="menu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="load">
    <property name="text">
-    <string>Открыть</string>
+    <string>Открыть файл с данными</string>
+   </property>
+  </action>
+  <action name="save">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Сохранить результаты кластеризации</string>
    </property>
   </action>
  </widget>

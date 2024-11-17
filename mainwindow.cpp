@@ -14,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->view->setResizeAnchor(QGraphicsView::AnchorViewCenter);
     ui->view->setAlignment(Qt::AlignCenter);
     connect(ui->load, &QAction::triggered, this, &MainWindow::load_data);
+    connect(ui->save, &QAction::triggered, this, &MainWindow::save_clusters);
     connect(ui->spinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::display_data);
     connect(ui->clustering, &QPushButton::clicked, this, &MainWindow::start_clustering);
 }
@@ -29,11 +30,12 @@ void MainWindow::load_data() {
                                                     "(*.dat)");
     QFile file(filepath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << "Не удалось открыть файл!";
+        qWarning() << "Не удалось открыть файл.";
         return;
     }
     QTextStream in(&file);
     data.clear();
+    clusters.clear();
     while (!in.atEnd()) {
         QString line = in.readLine();
         QStringList values = line.split(" ", QString::SkipEmptyParts);
@@ -48,10 +50,37 @@ void MainWindow::load_data() {
     ui->statusbar->showMessage("Данные успешно импортированы");
     ui->spinBox->setEnabled(!data.isEmpty());
     ui->spinBox->setValue(1);
+    ui->spinBox->setMaximum(data.first().size());
     ui->num_clusters->setEnabled(!data.isEmpty());
     ui->clustering->setEnabled(!data.isEmpty());
     ui->centroids->setEnabled(!data.isEmpty());
     prepare_scene();
+}
+
+void MainWindow::save_clusters() {
+    if (data.size() != clusters.size()) {
+        qWarning() << "Нарушено соотношение данных, проведите кластеризацию повторно.";
+        return;
+    }
+    QString filepath = QFileDialog::getSaveFileName(this, "Сохранить результут кластеризации",
+                                                          QCoreApplication::applicationDirPath(),
+                                                          "(*.dat)");
+    QFile file(filepath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "Не удалось открыть файл для записи.";
+        return;
+    }
+
+    QTextStream out(&file);
+    for (int i = 0; i < data.size(); ++i) {
+        if (data[i].size() >= 2) {
+            out << data[i][0] << " " << data[i][1] << " " << clusters[i] << "\n";
+        } else {
+            qWarning() << "Строка " << i << " содержит меньше 2 значений.";
+        }
+    }
+    file.close();
+    ui->statusbar->showMessage("Результаты кластеризации сохранены.");
 }
 
 void MainWindow::find_minmax_ranges() {
@@ -97,11 +126,12 @@ void MainWindow::start_clustering() {
         return k_means_clustering(data, k, plus_centroids);
     });
     connect(watcher, &QFutureWatcher<QVector<int>>::finished, this, [this, watcher]() {
-        QVector<int> result = watcher->result();
-        scene->display_data(data, result, ui->num_clusters->value());
+        clusters = watcher->result();
+        scene->display_data(data, clusters, ui->num_clusters->value());
         ui->statusbar->showMessage("Кластеризация проведена.");
         ui->spinBox->setEnabled(true);
         ui->clustering->setEnabled(true);
+        ui->save->setEnabled(true);
         watcher->deleteLater();
     });
     watcher->setFuture(future);
@@ -178,7 +208,6 @@ QVector<int> MainWindow::k_means_clustering(const QVector<QVector<double>> &data
 
 QVector<QVector<double>> MainWindow::k_means_plusplus_centroids(const QVector<QVector<double>>& data, int k) {
     int num_points = data.size();
-    int num_features = data[0].size();
     QVector<QVector<double>> centroids;
     srand(time(0));
     // Случайный выбор первого центра

@@ -22,7 +22,9 @@ private:
     Ui::MainWindow *ui;
     Scene* scene;
     QVector<QVector<double>> data;
+    QVector<int> clusters;
     void load_data();
+    void save_clusters();
     void find_minmax_ranges();
     void prepare_scene();
     void display_data(int column = 0);
