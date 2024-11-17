@@ -54,6 +54,7 @@ void MainWindow::load_data() {
     ui->num_clusters->setEnabled(!data.isEmpty());
     ui->clustering->setEnabled(!data.isEmpty());
     ui->centroids->setEnabled(!data.isEmpty());
+    ui->save->setEnabled(!clusters.isEmpty());
     prepare_scene();
 }
 
