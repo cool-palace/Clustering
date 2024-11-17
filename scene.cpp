@@ -55,7 +55,7 @@ void Scene::set_ranges(const QVector<double> & min, const QVector<double> & max,
     set_scale(maximums[0], maximums[1], minimums[0], minimums[1], x_step, y_step);
     hue_step_sizes = {0, 0};
     for (int i = 2; i < max.size(); ++i) {
-        hue_step_sizes.push_back(300/(abs(maximums[i]-minimums[i])));
+        hue_step_sizes.push_back(280/(abs(maximums[i]-minimums[i])));
     }
 }
 
@@ -82,7 +82,7 @@ void Scene::display_data(const QVector<QVector<double>>& data, int column){
 void Scene::display_data(const QVector<QVector<double>>& data, const QVector<int>& clusters, int k) {
     QtConcurrent::run([this, data, clusters, k]() {
         for (int i = 0; i < data.size(); ++i) {
-            int hue = (clusters[i] * 300) / (k - 1);
+            int hue = (clusters[i] * 280) / (k - 1);
             emit update_point_color(i, hue);
         }
     });
